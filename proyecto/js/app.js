@@ -15,6 +15,16 @@
   var MAP_MIN_ZOOM = -4;
   var MAP_MAX_ZOOM = 1;
 
+  var STORAGE_LAYER = "totk.map.layer.v1";
+  var LAYERS = [
+    { key: "sky", label: "Cielo", image: "assets/img/sky.jpg" },
+    { key: "surface", label: "Superficie", image: "assets/img/surface.jpg" },
+    { key: "depths", label: "Profundidades", image: "assets/img/depths.jpg" }
+  ];
+  var layerIndex = 1;
+  var layerBusy = false;
+  var loaderTimer = null;
+
   var CATEGORIES = {
     wells: makeCategory({
       key: "wells",
@@ -34,9 +44,7 @@
       storage: "totk.outfits.found.v1",
       glyph: OUTFIT_SVG,
       markerClass: "well-marker well-marker--outfit",
-      items: (Array.isArray(window.TOTK_OUTFITS) ? window.TOTK_OUTFITS : []).filter(function (item) {
-        return item && item.layer === "surface";
-      })
+      items: window.TOTK_OUTFITS
     })
   };
   var active = CATEGORIES.wells;
@@ -137,6 +145,89 @@
     }
   }
 
+  function layerOf(item) {
+    return item.layer || "surface";
+  }
+
+  function currentLayer() {
+    return LAYERS[layerIndex];
+  }
+
+  function layerItems() {
+    var key = currentLayer().key;
+    return active.items.filter(function (item) {
+      return layerOf(item) === key;
+    });
+  }
+
+  function layerFoundCount(items) {
+    return items.filter(function (item) {
+      return active.found.has(item.id);
+    }).length;
+  }
+
+  function loadLayer() {
+    try {
+      var key = JSON.parse(localStorage.getItem(STORAGE_LAYER) || "null");
+      for (var i = 0; i < LAYERS.length; i += 1) {
+        if (LAYERS[i].key === key) {
+          return i;
+        }
+      }
+    } catch (error) {
+      return 1;
+    }
+    return 1;
+  }
+
+  function saveLayer() {
+    try {
+      localStorage.setItem(STORAGE_LAYER, JSON.stringify(currentLayer().key));
+    } catch (error) {
+      return;
+    }
+  }
+
+  function setLoader(show) {
+    var loader = document.getElementById("mapLoader");
+    if (!loader) {
+      return;
+    }
+    clearTimeout(loaderTimer);
+    loader.classList.toggle("is-hidden", !show);
+    if (show) {
+      loaderTimer = setTimeout(function () {
+        setLoader(false);
+      }, 5000);
+    }
+  }
+
+  function ensureOverlay(layer) {
+    if (layer.overlay) {
+      return layer.overlay;
+    }
+    setLoader(true);
+    layer.overlay = L.imageOverlay(layer.image, MAP_BOUNDS, {
+      attribution: "Mapas: Nintendo · ZeldaMods TotK Object Map",
+      className: "hyrule-map hyrule-" + layer.key
+    });
+    layer.overlay.on("load", function () {
+      layer.loaded = true;
+      if (layer === currentLayer()) {
+        setLoader(false);
+      }
+    });
+    layer.overlay.on("error", function () {
+      layer.failed = true;
+      if (layer === currentLayer()) {
+        setLoader(false);
+        $("#map").addClass("map--no-image");
+        showToast("No se pudo cargar el mapa de " + layer.label + ".", "pending", 3200);
+      }
+    });
+    return layer.overlay;
+  }
+
   function escapeHtml(value) {
     return String(value)
       .replace(/&/g, "&amp;")
@@ -157,17 +248,20 @@
     return Math.round(value).toLocaleString("es-ES");
   }
 
-  function progressMessage(count) {
+  function progressMessage(count, total) {
     if (active.total === 0) {
       return "No se pudieron cargar los datos de los " + active.plural + ".";
+    }
+    if (total === 0) {
+      return "No hay " + active.plural + " en " + currentLayer().label + ".";
     }
     if (count === 0) {
       return "Aún no has marcado ningún " + active.singular + ".";
     }
-    if (count >= active.total) {
-      return "¡Completado! Has encontrado todos los " + active.plural + " de Hyrule.";
+    if (count >= total) {
+      return "¡Completado! Has encontrado todos los " + active.plural + " en " + currentLayer().label + ".";
     }
-    var remaining = active.total - count;
+    var remaining = total - count;
     if (remaining === 1) {
       return "Solo queda 1 " + active.singular + " por encontrar.";
     }
@@ -204,11 +298,6 @@
       attributionControl: true
     });
 
-    var overlay = L.imageOverlay("assets/img/surface.jpg", MAP_BOUNDS, {
-      attribution: "Mapa: Nintendo · ZeldaMods",
-      className: "hyrule-surface"
-    }).addTo(map);
-
     L.control.zoom({
       position: "bottomright",
       zoomInTitle: "Acercar",
@@ -237,28 +326,6 @@
     });
 
     map.on("click", clearSelection);
-
-    var loaderTimer = null;
-    function hideLoader() {
-      var loader = document.getElementById("mapLoader");
-      if (!loader || loader.classList.contains("is-hidden")) {
-        return;
-      }
-      clearTimeout(loaderTimer);
-      loader.classList.add("is-hidden");
-      setTimeout(function () {
-        if (loader.parentNode) {
-          loader.parentNode.removeChild(loader);
-        }
-      }, 500);
-    }
-
-    overlay.on("load", hideLoader);
-    var overlayImage = overlay.getElement();
-    if (overlayImage && overlayImage.complete && overlayImage.naturalWidth > 0) {
-      hideLoader();
-    }
-    loaderTimer = setTimeout(hideLoader, 5000);
   }
 
   function initMarkers() {
@@ -266,6 +333,94 @@
       initCategoryMarkers(CATEGORIES[key]);
     });
     map.addLayer(active.cluster);
+  }
+
+  function fillCluster(cat) {
+    var key = currentLayer().key;
+    cat.cluster.clearLayers();
+    cat.cluster.addLayers(cat.items.filter(function (item) {
+      return layerOf(item) === key;
+    }).map(function (item) {
+      return cat.markers[item.id];
+    }));
+  }
+
+  function updateLayerControl() {
+    var layer = currentLayer();
+    $("#layerName").text(layer.label);
+    $("#layerPos").text((layerIndex + 1) + "/" + LAYERS.length);
+    $("#layerUp").prop("disabled", layerIndex === 0);
+    $("#layerDown").prop("disabled", layerIndex === LAYERS.length - 1);
+    document.body.setAttribute("data-layer", layer.key);
+  }
+
+  function applyLayer(index) {
+    var prev = currentLayer();
+    if (map) {
+      map.closePopup();
+      if (prev.overlay && map.hasLayer(prev.overlay)) {
+        map.removeLayer(prev.overlay);
+      }
+    }
+    clearSelection();
+    layerIndex = index;
+    var layer = currentLayer();
+    var overlay = ensureOverlay(layer).addTo(map);
+    overlay.bringToBack();
+    var img = overlay.getElement();
+    if (layer.loaded || layer.failed || (img && img.complete && img.naturalWidth > 0)) {
+      setLoader(false);
+    }
+    $("#map").toggleClass("map--no-image", !!layer.failed);
+    fillCluster(active);
+    renderList();
+    applyCategoryTexts();
+    updateStats();
+    appliedFilters();
+    updateLayerControl();
+    saveLayer();
+  }
+
+  function bumpLayer(dir) {
+    var el = document.querySelector(".layer-switch");
+    if (el) {
+      el.classList.remove("is-bump");
+      void el.offsetWidth;
+      el.classList.add("is-bump");
+    }
+    $("#layerStatus").text(dir < 0 ? "No hay capa superior." : "No hay capa inferior.");
+  }
+
+  function setLayer(dir) {
+    var next = layerIndex + dir;
+    if (layerBusy) {
+      return;
+    }
+    if (next < 0 || next >= LAYERS.length) {
+      bumpLayer(dir);
+      return;
+    }
+    layerBusy = true;
+    applyLayer(next);
+    $("#layerStatus").text("Capa: " + currentLayer().label);
+    layerBusy = false;
+  }
+
+  function onLayerKey(event) {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") {
+      return;
+    }
+    if ($(event.target).is("input, textarea, select") || !document.getElementById("resetModal").hidden) {
+      return;
+    }
+    if ($("#sidebar").hasClass("is-open") && !$("#backdrop").prop("hidden")) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    if (!event.repeat) {
+      setLayer(event.key === "ArrowUp" ? -1 : 1);
+    }
   }
 
   function initCategoryMarkers(cat) {
@@ -327,7 +482,6 @@
       });
 
       cat.markers[well.id] = marker;
-      clusterGroup.addLayer(marker);
     });
 
     cat.cluster = clusterGroup;
@@ -355,7 +509,7 @@
   }
 
   function renderList() {
-    var html = active.items.map(function (well, index) {
+    var html = layerItems().map(function (well, index) {
       var isFound = active.found.has(well.id);
       var ordinal = String(index + 1).padStart(2, "0");
       var detail = itemDetail(well);
@@ -395,14 +549,16 @@
     });
 
     $("#visibleCount").text(visible + " " + (visible === 1 ? active.singular : active.plural));
-    $("#emptyState").prop("hidden", visible !== 0);
+    $("#emptyState").prop("hidden", visible !== 0).text(layerItems().length
+      ? "No hay resultados que coincidan con la búsqueda."
+      : "No hay " + active.plural + " en " + currentLayer().label + ".");
   }
 
   function applyCategoryTexts() {
     $("#brandTitle").text(active.label + " de Hyrule");
     $("#listTitle").text(active.label);
     $("#hudLabel").text(active.label);
-    $("#resetScope").text("Todos los " + active.plural);
+    $("#resetScope").text("Todos los " + active.plural + " de las tres capas (cielo, superficie y profundidades)");
     $("#searchInput").attr("placeholder", "Buscar " + active.singular + " por nombre...");
     $(".category-switch [data-category]").each(function () {
       var isActive = this.getAttribute("data-category") === active.key;
@@ -412,8 +568,9 @@
   }
 
   function updateStats() {
-    var TOTAL = active.total;
-    var count = active.found.size;
+    var items = layerItems();
+    var TOTAL = items.length;
+    var count = layerFoundCount(items);
     var percent = TOTAL ? (count / TOTAL) * 100 : 0;
 
     $("#foundCount").text(count);
@@ -424,7 +581,7 @@
     $("#chipFound").text(count);
     $("#progressFill").css("width", percent + "%");
     $("#progressBar").attr("aria-valuenow", count).attr("aria-valuemax", TOTAL);
-    $("#progressMessage").text(progressMessage(count));
+    $("#progressMessage").text(progressMessage(count, TOTAL));
     $("#hudTotal").text(TOTAL);
 
     document.body.classList.toggle("all-found", count === TOTAL && TOTAL > 0);
@@ -523,7 +680,7 @@
       return;
     }
 
-    var TOTAL = active.total;
+    var TOTAL = layerItems().length;
     var wasFound = active.found.has(id);
     var nowFound = !wasFound;
 
@@ -550,8 +707,8 @@
     updateStats();
     appliedFilters();
 
-    if (nowFound && active.found.size === TOTAL) {
-      showToast("¡Has encontrado los " + TOTAL + " " + active.plural + " de Hyrule!", "complete", 5200);
+    if (nowFound && layerFoundCount(layerItems()) === TOTAL) {
+      showToast("¡Has encontrado los " + TOTAL + " " + active.plural + " en " + currentLayer().label + "!", "complete", 5200);
     } else {
       showToast(
         nowFound ? "Encontrado: " + well.name : "Marcado como pendiente: " + well.name,
@@ -599,6 +756,7 @@
     }
     active = next;
     if (map && active.cluster) {
+      fillCluster(active);
       map.addLayer(active.cluster);
     }
     renderList();
@@ -725,6 +883,14 @@
       }
     });
 
+    document.addEventListener("keydown", onLayerKey, true);
+    $("#layerUp").on("click", function () {
+      setLayer(-1);
+    });
+    $("#layerDown").on("click", function () {
+      setLayer(1);
+    });
+
     $("#openSidebar").on("click", openSidebar);
     $("#closeSidebar").on("click", closeSidebar);
     $("#backdrop").on("click", closeSidebar);
@@ -775,11 +941,8 @@
   function start() {
     initMap();
     initMarkers();
-    renderList();
     bindEvents();
-    applyCategoryTexts();
-    updateStats();
-    appliedFilters();
+    applyLayer(loadLayer());
   }
 
   $(start);

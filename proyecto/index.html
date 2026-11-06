@@ -95,6 +95,18 @@
         </button>
       </div>
 
+      <nav class="layer-switch" aria-label="Capas del mapa">
+        <button class="layer-switch__btn" id="layerUp" type="button" aria-label="Subir de capa" title="Subir de capa (↑)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <span class="layer-switch__label"><strong id="layerName">Superficie</strong><span id="layerPos">2/3</span></span>
+        <button class="layer-switch__btn" id="layerDown" type="button" aria-label="Bajar de capa" title="Bajar de capa (↓)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </nav>
+      <div class="layer-transition" id="layerTransition" aria-hidden="true"></div>
+      <p class="sr-only" id="layerStatus" aria-live="polite"></p>
+
       <div class="map-stats" aria-live="polite">
         <span class="map-stats__pulse" aria-hidden="true"></span>
         <span><strong id="hudFound">0</strong> / <span id="hudTotal">0</span> encontrados</span>
