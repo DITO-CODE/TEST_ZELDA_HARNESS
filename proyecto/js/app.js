@@ -372,6 +372,9 @@
       setLoader(false);
     }
     $("#map").toggleClass("map--no-image", !!layer.failed);
+    if (layer.failed) {
+      showToast("No se pudo cargar el mapa de " + layer.label + ".", "pending", 3200);
+    }
     fillCluster(active);
     renderList();
     applyCategoryTexts();
@@ -401,9 +404,23 @@
       return;
     }
     layerBusy = true;
-    applyLayer(next);
-    $("#layerStatus").text("Capa: " + currentLayer().label);
-    layerBusy = false;
+    var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var mode = reduced ? "fading" : dir < 0 ? "ascending" : "descending";
+    var fx = document.getElementById("layerTransition");
+    var mapEl = document.getElementById("map");
+    fx.className = "layer-transition is-" + mode;
+    if (!reduced) {
+      mapEl.classList.add("is-layer-" + mode);
+    }
+    setTimeout(function () {
+      applyLayer(next);
+    }, reduced ? 150 : 480);
+    setTimeout(function () {
+      fx.className = "layer-transition";
+      mapEl.classList.remove("is-layer-ascending", "is-layer-descending");
+      layerBusy = false;
+      $("#layerStatus").text("Capa: " + currentLayer().label);
+    }, reduced ? 300 : 960);
   }
 
   function onLayerKey(event) {
@@ -558,7 +575,12 @@
     $("#brandTitle").text(active.label + " de Hyrule");
     $("#listTitle").text(active.label);
     $("#hudLabel").text(active.label);
-    $("#resetScope").text("Todos los " + active.plural + " de las tres capas (cielo, superficie y profundidades)");
+    var spread = LAYERS.filter(function (layer) {
+      return active.items.some(function (item) {
+        return layerOf(item) === layer.key;
+      });
+    }).length > 1;
+    $("#resetScope").text("Todos los " + active.plural + (spread ? " de todas las capas (cielo, superficie y profundidades)" : ""));
     $("#searchInput").attr("placeholder", "Buscar " + active.singular + " por nombre...");
     $(".category-switch [data-category]").each(function () {
       var isActive = this.getAttribute("data-category") === active.key;
