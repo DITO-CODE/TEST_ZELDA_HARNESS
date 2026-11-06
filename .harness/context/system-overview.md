@@ -6,11 +6,13 @@ Guía interactiva para localizar y marcar coleccionables y easter eggs de *Zelda
 
 ## 0. Propósito y Alcance Actual
 
-- **Implementado hoy:** dos categorías sobre el mapa de superficie (`assets/img/surface.jpg`):
-  - **Pozos** (`data/wells.*`, `window.TOTK_WELLS`, 58 registros).
-  - **Atuendos** (`data/outfits.*`, `window.TOTK_OUTFITS`, 85 registros). Solo se muestran los de `layer: "surface"`; los de `sky` y `depths` existen en los datos pero no hay mapa para ellos.
-- **No existen** mapas de cielo ni de profundidades, ni otras categorías.
-- **Agregar una categoría** es un cambio de varios archivos: datos (`.json` + `.js`), `<script>` en `index.html`, una entrada en `CATEGORIES` de `app.js`, estilos del marcador en `styles.css` y el contrato en `data-contracts.md` y en el gate 5.2 de `AGENTS.md`. Divídelo en sub-specs si supera el límite de 5 archivos.
+- **Implementado hoy:** tres capas de mapa (Cielo, Superficie y Profundidades), navegables con ↑/↓ o con el control de capas, y dos categorías:
+  - **Pozos** (`data/wells.*`, `window.TOTK_WELLS`, 58 registros, solo en Superficie).
+  - **Atuendos** (`data/outfits.*`, `window.TOTK_OUTFITS`, 85 registros: 7 en Cielo, 48 en Superficie y 30 en Profundidades).
+- La lista, la búsqueda, los filtros y los contadores muestran solo la capa visible. El reinicio de progreso borra la categoría completa (todas las capas).
+- **No existen** otras categorías ni vistas superpuestas de varias capas.
+- **Agregar una categoría** es un cambio de varios archivos: datos (`.json` + `.js`), `<script>` en `index.html`, una entrada en `CATEGORIES` de `app.js`, estilos del marcador en `styles.css` y el contrato en `data-contracts.md` y en el gate 5.2 de `AGENTS.md`. Divídelo en sub-specs si supera el límite de 5 archivos. Si sus registros no traen `layer`, se consideran de Superficie.
+- **Agregar una capa** exige una imagen en `assets/img/` (ver `data-contracts.md` §4) y una entrada en `LAYERS` de `app.js`; el orden de `LAYERS` es el orden vertical (arriba → abajo).
 
 ## 1. Topología del Repositorio
 
@@ -22,7 +24,7 @@ Aplicación web estática, sin backend ni paso de build. El progreso se guarda e
 - **`proyecto/js/jquery.min.js`, `leaflet.js`, `leaflet.markercluster.js`**: terceros, no se modifican.
 - **`proyecto/css/styles.css`**: estilos propios. `leaflet.css`, `MarkerCluster.css` y `css/images/` son de terceros.
 - **`proyecto/data/*.json`**: fuente legible de cada categoría. **`proyecto/data/*.js`**: los mismos datos como `window.TOTK_*`; es lo que carga la app (permite abrirla con `file://`).
-- **`proyecto/assets/img/surface.jpg`** (overlay del mapa) y **`proyecto/assets/fonts/cinzel-latin.woff2`** (tipografía local).
+- **`proyecto/assets/img/sky.jpg`, `surface.jpg`, `depths.jpg`**: un overlay por capa (6000 × 5000 px sobre `MAP_BOUNDS`), cargado al primer uso y reutilizado. **`proyecto/assets/fonts/cinzel-latin.woff2`**: tipografía local.
 
 ---
 
@@ -50,10 +52,15 @@ Aplicación web estática, sin backend ni paso de build. El progreso se guarda e
 ## 4. Flujo de Ejecución de `js/app.js`
 
 - **Categorías:** `CATEGORIES` (`wells`, `outfits`) se construye con `makeCategory()`, que filtra, ordena por `id`, indexa en `byId`, carga los encontrados (`loadFound()`) y crea los íconos (`markerIcon()`). `active` apunta a la categoría visible; se cambia con `setCategory()`.
-- **Arranque (`start()`):** `initMap()` → `initMarkers()` (un cluster por categoría con `initCategoryMarkers()`) → `renderList()` → `bindEvents()` → `updateStats()` / `appliedFilters()`.
+- **Arranque (`start()`):** `initMap()` → `initMarkers()` (crea los marcadores de cada categoría con `initCategoryMarkers()`; el cluster se llena por capa) → `bindEvents()` → `applyLayer(loadLayer())`.
+- **Capas:** `LAYERS` (`sky`, `surface`, `depths`), `layerIndex` y `layerOf(item)` (`item.layer` o `"surface"`).
+  - `applyLayer(index)`: cambio sin animación. Cierra popup y selección, cambia el overlay (`ensureOverlay()`), rellena el cluster de la categoría activa con `fillCluster()`, refresca lista, textos, contadores y filtros, y guarda la capa (`saveLayer()`).
+  - `setLayer(dir)`: única entrada interactiva (teclado y botones). Valida los límites (`bumpLayer()`), bloquea con `layerBusy`, reproduce la transición y llama a `applyLayer` a los 480 ms; libera a los 960 ms (300 ms con movimiento reducido).
+  - `onLayerKey`: `keydown` nativo en **fase de captura** sobre `document`. Intercepta ↑/↓ antes que Leaflet; se ignora en campos de texto, con el modal abierto o con el panel móvil abierto.
+  - `setCategory()` también llama a `fillCluster()` para mostrar la capa visible.
 - **Mutación de estado:** solo `toggleWell(id)` y `resetProgress()` cambian `active.found` y llaman a `saveFound()`. Ambas refrescan marcador, cluster, lista, contadores y toast. No dupliques esa secuencia en otra función.
 - **Selección:** `focusWell()` → `setSelected()` → `removeSelectedClass()`; `clearSelection()` → `removeSelectedClass()`.
-- **Puntos calientes** (mayor radio de impacto): `bindEvents()`, `toggleWell()`, `resetProgress()`, `setCategory()` e `initMap()`.
+- **Puntos calientes** (mayor radio de impacto): `bindEvents()`, `toggleWell()`, `resetProgress()`, `setCategory()`, `applyLayer()` e `initMap()`.
 
 ---
 
@@ -63,8 +70,10 @@ Aplicación web estática, sin backend ni paso de build. El progreso se guarda e
 
 | Región de `index.html` | IDs / atributos | Función que la usa |
 | :--- | :--- | :--- |
-| Mapa | `#map`, `#mapLoader` | `initMap()` |
+| Mapa | `#map`, `#mapLoader` (se oculta y se vuelve a mostrar, no se elimina) | `initMap()`, `setLoader()` |
 | Categoría | `.category-switch [data-category]`, `#brandTitle`, `#listTitle`, `#hudLabel`, `#resetTitle`, `#resetScope` | `setCategory()`, `applyCategoryTexts()` |
+| Capas | `.layer-switch` (`is-bump`), `#layerUp`, `#layerDown`, `#layerName`, `#layerPos`, `body[data-layer]` | `setLayer()`, `bumpLayer()`, `updateLayerControl()` |
+| Transición y anuncio | `#layerTransition` (`is-ascending`, `is-descending`, `is-fading`), `#map` (`is-layer-*`, `map--no-image`), `#layerStatus` (`aria-live`) | `setLayer()`, `applyLayer()`, `ensureOverlay()` |
 | Progreso | `#foundCount`, `#totalCount`, `#progressBar`, `#progressFill`, `#progressMessage` | `updateStats()` |
 | HUD | `#hudFound`, `#hudTotal`, `#openSidebar` | `updateStats()`, `bindEvents()` |
 | Búsqueda | `#searchInput` (atajo `/`, `Escape` limpia) | `bindEvents()` → `appliedFilters()` |
@@ -78,6 +87,7 @@ Aplicación web estática, sin backend ni paso de build. El progreso se guarda e
 Flujos que cruzan HTML y JS y se especifican como unidad:
 
 1. **Cambio de categoría:** `[data-category]` → `setCategory()` → textos, lista, cluster visible y contadores.
-2. **Contadores de progreso:** panel, HUD y chips se actualizan juntos desde `updateStats()`.
-3. **Reinicio:** `#resetBtn` → `#resetModal` → `resetProgress()` → `localStorage` (solo la categoría activa).
-4. **Render del mapa:** Leaflet + MarkerCluster + `window.TOTK_*` + `#map` + `initMap()`.
+2. **Cambio de capa:** ↑/↓ o `#layerUp`/`#layerDown` → `setLayer()` → `#layerTransition` → `applyLayer()` → overlay, cluster, lista, contadores, control y `totk.map.layer.v1`.
+3. **Contadores de progreso:** panel, HUD y chips se actualizan juntos desde `updateStats()`, con los elementos de la capa visible.
+4. **Reinicio:** `#resetBtn` → `#resetModal` → `resetProgress()` → `localStorage` (la categoría activa completa, en todas las capas).
+5. **Render del mapa:** Leaflet + MarkerCluster + `window.TOTK_*` + `#map` + `initMap()` + `ensureOverlay()`.

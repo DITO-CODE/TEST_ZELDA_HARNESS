@@ -2,7 +2,7 @@
 
 - **TASK-ID:** ZEL-002
 - **Jira:** N/A
-- **Estado:** APPROVED
+- **Estado:** COMPLETED
 - **Responsable:** @odiez3
 - **Rama asignada:** feat/ZEL-002-capas-cielo-profundidades
 - **Ámbito:** frontend

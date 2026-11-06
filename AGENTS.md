@@ -23,7 +23,7 @@ Ante cualquier conflicto manda el nivel superior. Este archivo siempre está en 
 ## 1. Reglas Cardinales
 
 1. **Sin spec ejecutable no hay código:** solo puedes modificar el repositorio si la tarea tiene su carpeta `.harness/specs/<TASK-ID>/` con `spec.md` en estado `APPROVED` o `IN_PROGRESS` y un `tasks.md`.
-2. **Blast Radius:** solo puedes modificar o crear los archivos de la tabla Blast Radius de `tasks.md`, con un máximo de **5 archivos por spec**, incluidos los tests. No cuentan los archivos de lock, los generados, `.harness/memory/`, `.harness/specs/`, `.harness/contracts/`, `.harness/runs/` ni `graphify-out/`. Si necesitas otro archivo, detente y pide aprobación.
+2. **Blast Radius:** solo puedes modificar o crear los archivos de la tabla Blast Radius de `tasks.md`, con un máximo de **5 archivos por spec**, incluidos los tests. No cuentan los archivos de lock, los generados,`.harness/context`,`.harness/memory/`, `.harness/specs/`, `.harness/contracts/`, `.harness/runs/` ni `graphify-out/`. Si necesitas otro archivo, detente y pide aprobación.
 3. **Verification First:** una tarea solo está completa cuando todos los comandos de la sección 5 terminan con código de salida `0`.
 4. **Contratos inmutables durante la ejecución:** con la spec en `APPROVED` o `IN_PROGRESS`, `.harness/contracts/` es de solo lectura. Si un contrato debe cambiar, detente y pide pasar la spec a `BLOCKED`.
 5. **Sin refactor no solicitado:** no arregles code smells, no reorganices imports ni actualices librerías ajenas a la spec.
