@@ -1,0 +1,408 @@
+window.TOTK_WELLS = [
+  {
+    "id": "0001",
+    "name": "Dronoc's Pass Well",
+    "x": 2105.445,
+    "y": -3831.584,
+    "z": 125.203
+  },
+  {
+    "id": "0002",
+    "name": "Tabantha Village Ruins Well",
+    "x": 1871.801,
+    "y": -2358.595,
+    "z": 261.955
+  },
+  {
+    "id": "0003",
+    "name": "Maritta Exchange Ruins Well",
+    "x": 1623.456,
+    "y": -1810.858,
+    "z": 90.862
+  },
+  {
+    "id": "0004",
+    "name": "Rowan Plain Well",
+    "x": 2325.903,
+    "y": -1069.444,
+    "z": 98.208
+  },
+  {
+    "id": "0005",
+    "name": "Irch Plain Well",
+    "x": 1616.2,
+    "y": -911.3,
+    "z": 90.064
+  },
+  {
+    "id": "0006",
+    "name": "Elma Knolls Well",
+    "x": 1351.729,
+    "y": -670.903,
+    "z": 72.387
+  },
+  {
+    "id": "0007",
+    "name": "Carok Bridge Well",
+    "x": 415.312,
+    "y": -1039.614,
+    "z": 18.646
+  },
+  {
+    "id": "0008",
+    "name": "Mount Gustaf Well",
+    "x": 331.207,
+    "y": -912.808,
+    "z": 3.852
+  },
+  {
+    "id": "0009",
+    "name": "Mount Daphnes Well",
+    "x": -622.692,
+    "y": -1313.988,
+    "z": -6.121
+  },
+  {
+    "id": "0010",
+    "name": "Aquame Lake Well",
+    "x": -1101.615,
+    "y": -879.179,
+    "z": 5.836
+  },
+  {
+    "id": "0011",
+    "name": "Outskirt Stable Well",
+    "x": -1296.74,
+    "y": -1460.715,
+    "z": 16.562
+  },
+  {
+    "id": "0012",
+    "name": "Outskirt Hill Well",
+    "x": -1349.228,
+    "y": -1680.918,
+    "z": 106.036
+  },
+  {
+    "id": "0013",
+    "name": "Mount Nabooru Well",
+    "x": -2238.07,
+    "y": -1720.26,
+    "z": 20.199
+  },
+  {
+    "id": "0014",
+    "name": "Rauru Settlement Ruins Well",
+    "x": 1266.5,
+    "y": 662,
+    "z": 24.184
+  },
+  {
+    "id": "0015",
+    "name": "Hyrule Castle Town Ruins Well",
+    "x": 547.616,
+    "y": 62.635,
+    "z": 12.166
+  },
+  {
+    "id": "0016",
+    "name": "Mabe Village Ruins Well",
+    "x": -163.089,
+    "y": -68.062,
+    "z": 9.115
+  },
+  {
+    "id": "0017",
+    "name": "Rebonae Bridge Well",
+    "x": 7.593,
+    "y": 786.998,
+    "z": 15.205
+  },
+  {
+    "id": "0018",
+    "name": "Bottomless Pond Well",
+    "x": -766.43,
+    "y": 686.193,
+    "z": 1.882
+  },
+  {
+    "id": "0019",
+    "name": "South Nabi Lake Well",
+    "x": -1496.9,
+    "y": 782.5,
+    "z": 20.5
+  },
+  {
+    "id": "0020",
+    "name": "Deya Village Ruins North Well",
+    "x": -1856.799,
+    "y": 316.515,
+    "z": -6.397
+  },
+  {
+    "id": "0021",
+    "name": "Deya Village Ruins Well",
+    "x": -1927.037,
+    "y": 322.356,
+    "z": -4.921
+  },
+  {
+    "id": "0022",
+    "name": "Deya Village Ruins East Well",
+    "x": -2042.955,
+    "y": 423.499,
+    "z": -6.002
+  },
+  {
+    "id": "0023",
+    "name": "Deya Village Ruins South Well",
+    "x": -2098.56,
+    "y": 339.629,
+    "z": 12.263
+  },
+  {
+    "id": "0024",
+    "name": "Hills of Baumer Well",
+    "x": -2127.813,
+    "y": 316.059,
+    "z": 29.515
+  },
+  {
+    "id": "0025",
+    "name": "Popla Foothills North Well",
+    "x": -2100.442,
+    "y": 594.484,
+    "z": 77.514
+  },
+  {
+    "id": "0026",
+    "name": "Popla Foothills South Well",
+    "x": -2261.083,
+    "y": 606.127,
+    "z": 35.295
+  },
+  {
+    "id": "0027",
+    "name": "Moor Garrison Ruins Well",
+    "x": 169.937,
+    "y": 1544.127,
+    "z": -6.786
+  },
+  {
+    "id": "0028",
+    "name": "Zauz Island Well",
+    "x": -136.496,
+    "y": 1435.5,
+    "z": -5.828
+  },
+  {
+    "id": "0029",
+    "name": "Goponga Village Ruins Well",
+    "x": -326.899,
+    "y": 1529.16,
+    "z": -5.847
+  },
+  {
+    "id": "0030",
+    "name": "Lanayru Wetlands Well",
+    "x": -397.185,
+    "y": 1219.596,
+    "z": -5.31
+  },
+  {
+    "id": "0031",
+    "name": "Rikoka Hills Well",
+    "x": -650.87,
+    "y": 1716.448,
+    "z": 8.001
+  },
+  {
+    "id": "0032",
+    "name": "Tabahl Woods Well",
+    "x": 175.524,
+    "y": 2746.387,
+    "z": 114.53
+  },
+  {
+    "id": "0033",
+    "name": "Shadow Hamlet Ruins Well",
+    "x": 2310.919,
+    "y": 3057.234,
+    "z": 318.428
+  },
+  {
+    "id": "0034",
+    "name": "Kara Kara Bazaar Well",
+    "x": -2606.406,
+    "y": -3235.338,
+    "z": 7.922
+  },
+  {
+    "id": "0041",
+    "name": "Lurelin Village Well",
+    "x": -3378.44,
+    "y": 2940.59,
+    "z": -4.389
+  },
+  {
+    "id": "0042",
+    "name": "Lakeside Stable Well",
+    "x": -3553.629,
+    "y": 1535.121,
+    "z": 46.321
+  },
+  {
+    "id": "0043",
+    "name": "Highland Stable Well",
+    "x": -3426.698,
+    "y": 537.629,
+    "z": 33.414
+  },
+  {
+    "id": "0044",
+    "name": "Snowfield Stable Well",
+    "x": 2586,
+    "y": -1679.566,
+    "z": 220.5
+  },
+  {
+    "id": "0045",
+    "name": "Gerudo Canyon Well",
+    "x": -2233,
+    "y": -2820,
+    "z": 15.464
+  },
+  {
+    "id": "0046",
+    "name": "Riverside Stable Well",
+    "x": -1126.331,
+    "y": 365.402,
+    "z": -4.194
+  },
+  {
+    "id": "0047",
+    "name": "Wetland Stable Well",
+    "x": -195.319,
+    "y": 884.597,
+    "z": 11.856
+  },
+  {
+    "id": "0047B",
+    "name": "Wetland Stable South Well",
+    "x": -262.713,
+    "y": 858.035,
+    "z": 11.856
+  },
+  {
+    "id": "0048",
+    "name": "Dueling Peaks Stable Well",
+    "x": -1949.73,
+    "y": 1794.704,
+    "z": -3.636
+  },
+  {
+    "id": "0049",
+    "name": "Hateno Village North Well",
+    "x": -2029.529,
+    "y": 3421.88,
+    "z": 123.904
+  },
+  {
+    "id": "0049B",
+    "name": "Hateno Village West Well",
+    "x": -2050.473,
+    "y": 3356.756,
+    "z": 103.957
+  },
+  {
+    "id": "0049C",
+    "name": "Hateno Village East Well",
+    "x": -2152.45,
+    "y": 3514.478,
+    "z": 114.932
+  },
+  {
+    "id": "0049D",
+    "name": "Hateno Village South Well",
+    "x": -2211.729,
+    "y": 3384.515,
+    "z": 121.884
+  },
+  {
+    "id": "0049E",
+    "name": "Zelda's Secret Well",
+    "x": -2300.911,
+    "y": 3301.478,
+    "z": 116.478
+  },
+  {
+    "id": "0050",
+    "name": "New Serenne Stable Well",
+    "x": 700.063,
+    "y": -1357.184,
+    "z": 61.569
+  },
+  {
+    "id": "0051",
+    "name": "Kakariko Village Well",
+    "x": -1043.556,
+    "y": 1875.014,
+    "z": 109.516
+  },
+  {
+    "id": "0052",
+    "name": "Woodland Stable Well",
+    "x": 1154.046,
+    "y": 1092.674,
+    "z": 8
+  },
+  {
+    "id": "0053",
+    "name": "Lookout Landing Well",
+    "x": 134.925,
+    "y": -212.023,
+    "z": 4.485
+  },
+  {
+    "id": "0054",
+    "name": "Foothill Stable Well",
+    "x": 1169.059,
+    "y": 2617.932,
+    "z": 134
+  },
+  {
+    "id": "0055",
+    "name": "Construction Site Well",
+    "x": 1587.556,
+    "y": 3719.832,
+    "z": 77.104
+  },
+  {
+    "id": "0056",
+    "name": "South Akkala Stable Well",
+    "x": 1715.5,
+    "y": 3195,
+    "z": 187.268
+  },
+  {
+    "id": "0057",
+    "name": "East Akkala Stable Well",
+    "x": 2780.07,
+    "y": 4232.868,
+    "z": 111.973
+  },
+  {
+    "id": "0058",
+    "name": "Haran Lakefront Well",
+    "x": -3387,
+    "y": 394.5,
+    "z": 32.5
+  },
+  {
+    "id": "0059",
+    "name": "Tabantha Bridge Stable Well",
+    "x": 531.957,
+    "y": -2958.587,
+    "z": 155.456
+  }
+];
