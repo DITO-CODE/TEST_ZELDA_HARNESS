@@ -1,22 +1,13 @@
 (function () {
   "use strict";
 
-  var STORAGE_FOUND = "totk.wells.found.v1";
   var STORAGE_VIEW = "totk.wells.view.v1";
-
-  var WELLS = (window.TOTK_WELLS || []).slice().sort(function (a, b) {
-    return a.id.localeCompare(b.id);
-  });
-  var TOTAL = WELLS.length;
-
-  var WELL_BY_ID = {};
-  WELLS.forEach(function (well) {
-    WELL_BY_ID[well.id] = well;
-  });
 
   var DROP_SVG = '<svg class="icon-drop" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6c3.6 4.5 6 7.7 6 11a6 6 0 0 1-12 0c0-3.3 2.4-6.5 6-11Z" fill="currentColor"/></svg>';
   var CHECK_SVG = '<svg class="icon-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.3 4.3L19 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   var LIST_CHECK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.3 4.3L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var OUTFIT_SVG = '<svg class="icon-drop" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.6 3.4 12 5.4l3.4-2 4.8 3.2-2.1 4.1-2-1.1v10.9H7.9V9.6l-2 1.1-2.1-4.1Z" fill="currentColor"/></svg>';
+  var SLOT_LABELS = { head: "Cabeza", body: "Torso", legs: "Piernas" };
 
   var MAP_BOUNDS = L.latLngBounds([-5000, -6000], [5000, 6000]);
   var MAP_WIDTH = 12000;
@@ -24,7 +15,32 @@
   var MAP_MIN_ZOOM = -4;
   var MAP_MAX_ZOOM = 1;
 
-  var foundIds = loadFound();
+  var CATEGORIES = {
+    wells: makeCategory({
+      key: "wells",
+      label: "Pozos",
+      singular: "pozo",
+      plural: "pozos",
+      storage: "totk.wells.found.v1",
+      glyph: DROP_SVG,
+      markerClass: "well-marker",
+      items: window.TOTK_WELLS
+    }),
+    outfits: makeCategory({
+      key: "outfits",
+      label: "Atuendos",
+      singular: "atuendo",
+      plural: "atuendos",
+      storage: "totk.outfits.found.v1",
+      glyph: OUTFIT_SVG,
+      markerClass: "well-marker well-marker--outfit",
+      items: (Array.isArray(window.TOTK_OUTFITS) ? window.TOTK_OUTFITS : []).filter(function (item) {
+        return item && item.layer === "surface";
+      })
+    })
+  };
+  var active = CATEGORIES.wells;
+
   var activeFilter = "all";
   var searchTerm = "";
   var selectedId = null;
@@ -32,36 +48,44 @@
   var viewTimer = null;
   var lastFocused = null;
   var map = null;
-  var markers = {};
-  var clusterGroup = null;
 
-  var pendingIcon = L.divIcon({
-    className: "well-marker",
-    html: '<span class="well-marker__pin">' + DROP_SVG + CHECK_SVG + "</span>",
-    iconSize: [30, 30],
-    iconAnchor: [15, 15],
-    popupAnchor: [0, -16],
-    tooltipAnchor: [0, -16]
-  });
+  function markerIcon(def, isFound) {
+    return L.divIcon({
+      className: def.markerClass + (isFound ? " is-found" : ""),
+      html: '<span class="well-marker__pin">' + def.glyph + CHECK_SVG + "</span>",
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
+      popupAnchor: [0, -16],
+      tooltipAnchor: [0, -16]
+    });
+  }
 
-  var foundIcon = L.divIcon({
-    className: "well-marker is-found",
-    html: '<span class="well-marker__pin">' + DROP_SVG + CHECK_SVG + "</span>",
-    iconSize: [30, 30],
-    iconAnchor: [15, 15],
-    popupAnchor: [0, -16],
-    tooltipAnchor: [0, -16]
-  });
+  function makeCategory(def) {
+    var items = (Array.isArray(def.items) ? def.items : []).filter(function (item) {
+      return item && typeof item.id === "string" && typeof item.name === "string";
+    }).sort(function (a, b) {
+      return a.id.localeCompare(b.id);
+    });
+    var byId = {};
+    items.forEach(function (item) {
+      byId[item.id] = item;
+    });
+    def.items = items;
+    def.byId = byId;
+    def.total = items.length;
+    def.found = loadFound(def.storage, byId);
+    def.markers = {};
+    def.cluster = null;
+    def.pendingIcon = markerIcon(def, false);
+    def.foundIcon = markerIcon(def, true);
+    return def;
+  }
 
-  function loadFound() {
+  function loadFound(storageKey, byId) {
     try {
-      var raw = JSON.parse(localStorage.getItem(STORAGE_FOUND) || "[]");
-      var valid = {};
-      WELLS.forEach(function (well) {
-        valid[well.id] = true;
-      });
+      var raw = JSON.parse(localStorage.getItem(storageKey) || "[]");
       return new Set((Array.isArray(raw) ? raw : []).filter(function (id) {
-        return valid[id];
+        return typeof id === "string" && byId.hasOwnProperty(id);
       }));
     } catch (error) {
       return new Set();
@@ -70,7 +94,7 @@
 
   function saveFound() {
     try {
-      localStorage.setItem(STORAGE_FOUND, JSON.stringify(Array.from(foundIds)));
+      localStorage.setItem(active.storage, JSON.stringify(Array.from(active.found)));
     } catch (error) {
       return;
     }
@@ -134,17 +158,35 @@
   }
 
   function progressMessage(count) {
+    if (active.total === 0) {
+      return "No se pudieron cargar los datos de los " + active.plural + ".";
+    }
     if (count === 0) {
-      return "Aún no has marcado ningún pozo.";
+      return "Aún no has marcado ningún " + active.singular + ".";
     }
-    if (count >= TOTAL) {
-      return "¡Completado! Has encontrado todos los pozos de Hyrule.";
+    if (count >= active.total) {
+      return "¡Completado! Has encontrado todos los " + active.plural + " de Hyrule.";
     }
-    var remaining = TOTAL - count;
+    var remaining = active.total - count;
     if (remaining === 1) {
-      return "Solo queda 1 pozo por encontrar.";
+      return "Solo queda 1 " + active.singular + " por encontrar.";
     }
-    return "Te quedan " + remaining + " pozos por encontrar.";
+    return "Te quedan " + remaining + " " + active.plural + " por encontrar.";
+  }
+
+  function capitalize(value) {
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  }
+
+  function itemDetail(item) {
+    var parts = [];
+    if (SLOT_LABELS[item.slot]) {
+      parts.push(SLOT_LABELS[item.slot]);
+    }
+    if (item.set) {
+      parts.push(item.set);
+    }
+    return parts.join(" · ");
   }
 
   function initMap() {
@@ -220,7 +262,14 @@
   }
 
   function initMarkers() {
-    clusterGroup = L.markerClusterGroup({
+    Object.keys(CATEGORIES).forEach(function (key) {
+      initCategoryMarkers(CATEGORIES[key]);
+    });
+    map.addLayer(active.cluster);
+  }
+
+  function initCategoryMarkers(cat) {
+    var clusterGroup = L.markerClusterGroup({
       showCoverageOnHover: false,
       spiderfyOnMaxZoom: true,
       removeOutsideVisibleBounds: true,
@@ -241,10 +290,10 @@
       }
     });
 
-    WELLS.forEach(function (well) {
-      var isFound = foundIds.has(well.id);
+    cat.items.forEach(function (well) {
+      var isFound = cat.found.has(well.id);
       var marker = L.marker([well.x, well.y], {
-        icon: isFound ? foundIcon : pendingIcon,
+        icon: isFound ? cat.foundIcon : cat.pendingIcon,
         title: well.name,
         keyboard: false,
         riseOnHover: true,
@@ -259,7 +308,7 @@
       });
 
       marker.bindPopup(function () {
-        return popupHtml(well);
+        return popupHtml(cat, well);
       }, {
         maxWidth: 290,
         minWidth: 254,
@@ -277,20 +326,22 @@
         }
       });
 
-      markers[well.id] = marker;
+      cat.markers[well.id] = marker;
       clusterGroup.addLayer(marker);
     });
 
-    map.addLayer(clusterGroup);
+    cat.cluster = clusterGroup;
   }
 
-  function popupHtml(well) {
-    var isFound = foundIds.has(well.id);
+  function popupHtml(cat, well) {
+    var isFound = cat.found.has(well.id);
+    var detail = itemDetail(well);
     return "" +
       '<div class="well-popup">' +
         '<div class="well-popup__head">' +
-          '<p class="well-popup__eyebrow">Pozo ' + escapeHtml(well.id) + "</p>" +
+          '<p class="well-popup__eyebrow">' + escapeHtml(capitalize(cat.singular)) + " " + escapeHtml(well.id) + "</p>" +
           "<h3>" + escapeHtml(well.name) + "</h3>" +
+          (detail ? '<p class="well-popup__coords">' + escapeHtml(detail) + "</p>" : "") +
           '<p class="well-popup__coords">X ' + formatCoord(well.y) + " · Y " + formatCoord(well.x) + " · Z " + formatCoord(well.z) + "</p>" +
         "</div>" +
         '<span class="well-popup__status' + (isFound ? " is-found" : "") + '"><i></i>' + (isFound ? "Encontrado" : "Pendiente") + "</span>" +
@@ -304,16 +355,17 @@
   }
 
   function renderList() {
-    var html = WELLS.map(function (well, index) {
-      var isFound = foundIds.has(well.id);
+    var html = active.items.map(function (well, index) {
+      var isFound = active.found.has(well.id);
       var ordinal = String(index + 1).padStart(2, "0");
+      var detail = itemDetail(well);
       return "" +
         '<li class="well-item' + (isFound ? " is-found" : "") + '" data-id="' + escapeHtml(well.id) + '">' +
           '<button type="button" class="well-item__btn" aria-label="' + escapeHtml(well.name + " — " + (isFound ? "encontrado" : "pendiente")) + '" data-focus-well="' + escapeHtml(well.id) + '">' +
             '<span class="well-item__badge">' + ordinal + "</span>" +
             '<span class="well-item__body">' +
               '<span class="well-item__name">' + escapeHtml(well.name) + "</span>" +
-              '<span class="well-item__meta">X ' + formatCoord(well.y) + " · Y " + formatCoord(well.x) + "</span>" +
+              '<span class="well-item__meta">' + (detail ? escapeHtml(detail) + " · " : "") + "X " + formatCoord(well.y) + " · Y " + formatCoord(well.x) + "</span>" +
             "</span>" +
             '<span class="well-item__status" aria-hidden="true">' + LIST_CHECK_SVG + "</span>" +
           "</button>" +
@@ -329,12 +381,12 @@
 
     $(".well-item").each(function () {
       var id = this.getAttribute("data-id");
-      var well = WELL_BY_ID[id];
-      var isFound = foundIds.has(id);
+      var well = active.byId[id];
+      var isFound = active.found.has(id);
       var matchesFilter = activeFilter === "all" ||
         (activeFilter === "found" && isFound) ||
         (activeFilter === "pending" && !isFound);
-      var matchesSearch = !term || normalize(well.name + " " + id).indexOf(term) !== -1;
+      var matchesSearch = !term || normalize(well.name + " " + id + " " + itemDetail(well)).indexOf(term) !== -1;
       var show = matchesFilter && matchesSearch;
       this.classList.toggle("is-hidden", !show);
       if (show) {
@@ -342,12 +394,26 @@
       }
     });
 
-    $("#visibleCount").text(visible + (visible === 1 ? " pozo" : " pozos"));
+    $("#visibleCount").text(visible + " " + (visible === 1 ? active.singular : active.plural));
     $("#emptyState").prop("hidden", visible !== 0);
   }
 
+  function applyCategoryTexts() {
+    $("#brandTitle").text(active.label + " de Hyrule");
+    $("#listTitle").text(active.label);
+    $("#hudLabel").text(active.label);
+    $("#resetScope").text("Todos los " + active.plural);
+    $("#searchInput").attr("placeholder", "Buscar " + active.singular + " por nombre...");
+    $(".category-switch [data-category]").each(function () {
+      var isActive = this.getAttribute("data-category") === active.key;
+      this.classList.toggle("is-active", isActive);
+      this.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
+  }
+
   function updateStats() {
-    var count = foundIds.size;
+    var TOTAL = active.total;
+    var count = active.found.size;
     var percent = TOTAL ? (count / TOTAL) * 100 : 0;
 
     $("#foundCount").text(count);
@@ -363,20 +429,20 @@
 
     document.body.classList.toggle("all-found", count === TOTAL && TOTAL > 0);
     document.title = count === 0
-      ? "Pozos de Hyrule · Tears of the Kingdom"
-      : count + "/" + TOTAL + " pozos · Tears of the Kingdom";
+      ? active.label + " de Hyrule · Tears of the Kingdom"
+      : count + "/" + TOTAL + " " + active.plural + " · Tears of the Kingdom";
   }
 
   function updateListState(id) {
-    var isFound = foundIds.has(id);
-    var well = WELL_BY_ID[id];
+    var isFound = active.found.has(id);
+    var well = active.byId[id];
     var $item = $('.well-item[data-id="' + id + '"]');
     $item.toggleClass("is-found", isFound);
     $item.find(".well-item__btn").attr("aria-label", well.name + " — " + (isFound ? "encontrado" : "pendiente"));
   }
 
   function setSelected(id, scroll) {
-    if (!WELL_BY_ID[id]) {
+    if (!active.byId[id]) {
       return;
     }
 
@@ -386,7 +452,7 @@
 
     selectedId = id;
 
-    var marker = markers[id];
+    var marker = active.markers[id];
     var el = marker ? marker.getElement() : null;
     if (el) {
       L.DomUtil.addClass(el, "is-selected");
@@ -404,7 +470,7 @@
   }
 
   function removeSelectedClass(id) {
-    var marker = markers[id];
+    var marker = active.markers[id];
     var el = marker ? marker.getElement() : null;
     if (el) {
       L.DomUtil.removeClass(el, "is-selected");
@@ -424,7 +490,7 @@
   }
 
   function focusWell(id) {
-    var marker = markers[id];
+    var marker = active.markers[id];
     if (!marker) {
       return;
     }
@@ -434,9 +500,9 @@
       marker.openPopup();
     };
 
-    var visibleParent = clusterGroup.getVisibleParent(marker);
-    if (visibleParent && visibleParent !== marker) {
-      clusterGroup.zoomToShowLayer(marker, reveal);
+    var visibleParent = active.cluster.getVisibleParent(marker);
+    if (visibleParent !== marker) {
+      active.cluster.zoomToShowLayer(marker, reveal);
       return;
     }
 
@@ -451,26 +517,27 @@
   }
 
   function toggleWell(id) {
-    var well = WELL_BY_ID[id];
-    var marker = markers[id];
+    var well = active.byId[id];
+    var marker = active.markers[id];
     if (!well || !marker) {
       return;
     }
 
-    var wasFound = foundIds.has(id);
+    var TOTAL = active.total;
+    var wasFound = active.found.has(id);
     var nowFound = !wasFound;
 
     if (nowFound) {
-      foundIds.add(id);
+      active.found.add(id);
     } else {
-      foundIds.delete(id);
+      active.found.delete(id);
     }
     saveFound();
 
     marker.options.wellFound = nowFound;
-    marker.setIcon(nowFound ? foundIcon : pendingIcon);
-    marker.setPopupContent(popupHtml(well));
-    clusterGroup.refreshClusters(marker);
+    marker.setIcon(nowFound ? active.foundIcon : active.pendingIcon);
+    marker.setPopupContent(popupHtml(active, well));
+    active.cluster.refreshClusters(marker);
 
     if (selectedId === id) {
       var el = marker.getElement();
@@ -483,8 +550,8 @@
     updateStats();
     appliedFilters();
 
-    if (nowFound && foundIds.size === TOTAL) {
-      showToast("¡Has encontrado los " + TOTAL + " pozos de Hyrule!", "complete", 5200);
+    if (nowFound && active.found.size === TOTAL) {
+      showToast("¡Has encontrado los " + TOTAL + " " + active.plural + " de Hyrule!", "complete", 5200);
     } else {
       showToast(
         nowFound ? "Encontrado: " + well.name : "Marcado como pendiente: " + well.name,
@@ -495,27 +562,49 @@
   }
 
   function resetProgress() {
-    foundIds.clear();
+    active.found.clear();
     saveFound();
 
-    WELLS.forEach(function (well) {
-      var marker = markers[well.id];
+    active.items.forEach(function (well) {
+      var marker = active.markers[well.id];
       if (!marker) {
         return;
       }
       marker.options.wellFound = false;
-      marker.setIcon(pendingIcon);
-      marker.setPopupContent(popupHtml(well));
+      marker.setIcon(active.pendingIcon);
+      marker.setPopupContent(popupHtml(active, well));
     });
 
-    clusterGroup.refreshClusters();
-    WELLS.forEach(function (well) {
+    active.cluster.refreshClusters();
+    active.items.forEach(function (well) {
       updateListState(well.id);
     });
     updateStats();
     appliedFilters();
     closeResetModal();
-    showToast("Progreso reiniciado. Los " + TOTAL + " pozos vuelven a estar pendientes.", "pending", 2800);
+    showToast("Progreso reiniciado. Los " + active.total + " " + active.plural + " vuelven a estar pendientes.", "pending", 2800);
+  }
+
+  function setCategory(key) {
+    var next = CATEGORIES[key];
+    if (!next || next === active) {
+      return;
+    }
+    if (map) {
+      map.closePopup();
+    }
+    clearSelection();
+    if (map && active.cluster) {
+      map.removeLayer(active.cluster);
+    }
+    active = next;
+    if (map && active.cluster) {
+      map.addLayer(active.cluster);
+    }
+    renderList();
+    applyCategoryTexts();
+    updateStats();
+    appliedFilters();
   }
 
   function showToast(message, variant, duration) {
@@ -586,7 +675,7 @@
 
     $(document).on("click", "[data-center-well]", function () {
       var id = this.getAttribute("data-center-well");
-      var marker = markers[id];
+      var marker = active.markers[id];
       if (marker) {
         map.flyTo(marker.getLatLng(), Math.max(map.getZoom(), 0.25), { duration: 0.5 });
         marker.openPopup();
@@ -598,9 +687,13 @@
       appliedFilters();
     });
 
+    $(".category-switch").on("click", "[data-category]", function () {
+      setCategory(this.getAttribute("data-category"));
+    });
+
     $(".filters").on("click", ".filter", function () {
       activeFilter = this.getAttribute("data-filter");
-      $(".filter").removeClass("is-active").attr("aria-pressed", "false");
+      $(".filters .filter").removeClass("is-active").attr("aria-pressed", "false");
       $(this).addClass("is-active").attr("aria-pressed", "true");
       appliedFilters();
     });
@@ -652,8 +745,8 @@
           appliedFilters();
           return;
         }
-        if (selectedId) {
-          markers[selectedId].closePopup();
+        if (selectedId && active.markers[selectedId]) {
+          active.markers[selectedId].closePopup();
           clearSelection();
         }
         return;
@@ -680,15 +773,11 @@
   }
 
   function start() {
-    if (!TOTAL) {
-      $("#progressMessage").text("No se pudieron cargar los datos de los pozos.");
-      return;
-    }
-
     initMap();
     initMarkers();
     renderList();
     bindEvents();
+    applyCategoryTexts();
     updateStats();
     appliedFilters();
   }

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#070b0a">
-  <meta name="description" content="Mapa interactivo local para localizar y marcar los 58 pozos de Hyrule en Tears of the Kingdom.">
+  <meta name="description" content="Mapa interactivo local para localizar y marcar pozos y atuendos de Hyrule en Tears of the Kingdom.">
   <title>Pozos de Hyrule · Tears of the Kingdom</title>
 
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23070b0a'/%3E%3Cpath d='M16 5c4.4 5.6 7.4 9.4 7.4 13.3a7.4 7.4 0 1 1-14.8 0C8.6 14.4 11.6 10.6 16 5Z' fill='%23d8b45a'/%3E%3C/svg%3E">
@@ -14,7 +14,7 @@
 </head>
 <body>
   <div class="app">
-    <aside class="sidebar" id="sidebar" aria-label="Panel de pozos">
+    <aside class="sidebar" id="sidebar" aria-label="Panel de coleccionables">
       <header class="brand">
         <span class="brand__sigil" aria-hidden="true">
           <svg viewBox="0 0 48 48" role="img">
@@ -25,48 +25,53 @@
         </span>
         <div class="brand__text">
           <p class="brand__kicker">Tears of the Kingdom</p>
-          <h1>Pozos de Hyrule</h1>
+          <h1 id="brandTitle">Pozos de Hyrule</h1>
         </div>
         <button class="icon-btn sidebar__close" id="closeSidebar" type="button" aria-label="Cerrar panel">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
       </header>
 
+      <div class="category-switch" role="group" aria-label="Categoría">
+        <button class="filter is-active" type="button" data-category="wells" aria-pressed="true">Pozos</button>
+        <button class="filter" type="button" data-category="outfits" aria-pressed="false">Atuendos</button>
+      </div>
+
       <section class="progress-card" aria-label="Progreso de exploración">
         <div class="progress-card__top">
           <span class="eyebrow">Progreso</span>
-          <p class="progress-card__count"><strong id="foundCount">0</strong><span id="totalCount">/ 58</span></p>
+          <p class="progress-card__count"><strong id="foundCount">0</strong><span id="totalCount">/ 0</span></p>
         </div>
-        <div class="progress-track" role="progressbar" aria-label="Progreso de pozos encontrados" aria-valuemin="0" aria-valuemax="58" aria-valuenow="0" id="progressBar">
+        <div class="progress-track" role="progressbar" aria-label="Progreso de encontrados" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" id="progressBar">
           <span class="progress-fill" id="progressFill"></span>
         </div>
-        <p class="progress-card__msg" id="progressMessage">Aún no has marcado ningún pozo.</p>
+        <p class="progress-card__msg" id="progressMessage"></p>
       </section>
 
       <p class="sidebar__hint">
-        Marca los pozos que vayas encontrando. Tu progreso se guarda automáticamente en este dispositivo.
+        Marca lo que vayas encontrando. Tu progreso se guarda automáticamente en este dispositivo.
       </p>
 
       <div class="search-field">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m16 16 4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-        <input type="search" id="searchInput" placeholder="Buscar pozo por nombre..." autocomplete="off" aria-label="Buscar pozo">
+        <input type="search" id="searchInput" placeholder="Buscar por nombre..." autocomplete="off" aria-label="Buscar">
         <kbd>/</kbd>
       </div>
 
-      <div class="filters" role="group" aria-label="Filtrar pozos">
-        <button class="filter is-active" type="button" data-filter="all" aria-pressed="true">Todos <span id="chipAll">58</span></button>
-        <button class="filter" type="button" data-filter="pending" aria-pressed="false">Pendientes <span id="chipPending">58</span></button>
+      <div class="filters" role="group" aria-label="Filtrar">
+        <button class="filter is-active" type="button" data-filter="all" aria-pressed="true">Todos <span id="chipAll">0</span></button>
+        <button class="filter" type="button" data-filter="pending" aria-pressed="false">Pendientes <span id="chipPending">0</span></button>
         <button class="filter" type="button" data-filter="found" aria-pressed="false">Encontrados <span id="chipFound">0</span></button>
       </div>
 
       <div class="list-head">
-        <span class="eyebrow">Pozos</span>
-        <span class="list-head__count" id="visibleCount">58 pozos</span>
+        <span class="eyebrow" id="listTitle">Pozos</span>
+        <span class="list-head__count" id="visibleCount"></span>
       </div>
 
       <div class="list-scroll" id="listScroll">
         <ul class="well-list" id="wellList"></ul>
-        <p class="list-empty" id="emptyState" hidden>No hay pozos que coincidan con la búsqueda.</p>
+        <p class="list-empty" id="emptyState" hidden>No hay resultados que coincidan con la búsqueda.</p>
       </div>
 
       <footer class="sidebar__footer">
@@ -84,15 +89,15 @@
       <div class="map-vignette" aria-hidden="true"></div>
 
       <div class="map-hud">
-        <button class="hud-btn" id="openSidebar" type="button" aria-label="Abrir lista de pozos">
+        <button class="hud-btn" id="openSidebar" type="button" aria-label="Abrir lista">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          <span>Pozos</span>
+          <span id="hudLabel">Pozos</span>
         </button>
       </div>
 
       <div class="map-stats" aria-live="polite">
         <span class="map-stats__pulse" aria-hidden="true"></span>
-        <span><strong id="hudFound">0</strong> / <span id="hudTotal">58</span> encontrados</span>
+        <span><strong id="hudFound">0</strong> / <span id="hudTotal">0</span> encontrados</span>
       </div>
 
       <div class="map-loader" id="mapLoader" aria-hidden="true">
@@ -112,7 +117,7 @@
         <svg viewBox="0 0 48 48"><path d="M24 4 44 24 24 44 4 24Z" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".5"/><path d="M24 15v10m0 6v1" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
       </span>
       <h2 id="resetTitle">¿Reiniciar progreso?</h2>
-      <p>Todos los pozos volverán a marcarse como pendientes. Esta acción no se puede deshacer.</p>
+      <p><span id="resetScope">Todos los pozos</span> volverán a marcarse como pendientes. Esta acción no se puede deshacer.</p>
       <div class="modal__actions">
         <button class="btn btn--ghost" type="button" data-close-modal>Cancelar</button>
         <button class="btn btn--primary" type="button" id="confirmReset">Sí, reiniciar</button>
@@ -124,6 +129,7 @@
   <script src="js/leaflet.js"></script>
   <script src="js/leaflet.markercluster.js"></script>
   <script src="data/wells.js"></script>
+  <script src="data/outfits.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
