@@ -2,24 +2,33 @@
 
 ---
 
-## 1. Sanitización de Credenciales y Secretos
+## 1. Credenciales y Secretos
 
-- **Cero tolerancia a credenciales en duro:** Prohibido escribir API keys, tokens JWT, contraseñas de bases de datos o secretos en archivos de código, specs o documentación.
-- **Archivos sensibles:** El agente tiene prohibido leer, modificar o incluir en commits:
+- **Cero credenciales en duro:** prohibido escribir API keys, tokens, contraseñas o secretos en código, specs, documentación, bitácoras o logs de ejecución.
+- **Archivos sensibles:** el agente no lee, modifica ni incluye en commits:
   - `.env` y `.env.*`, excepto `.env.example`
   - Claves privadas (`id_rsa`, `*.pem`, `*.key`)
-  - Credenciales de proveedores cloud (`~/.aws/`, `~/.config/gcloud/`)
+  - Credenciales de proveedores cloud (`~/.aws/`, `~/.config/gcloud/`, `~/.azure/`)
 
 ---
 
-## 2. Comandos de Terminal Estrictamente Prohibidos
+## 2. Comandos Estrictamente Prohibidos
 
-El agente no debe ejecutar bajo ninguna circunstancia:
-
-- **Comandos destructivos de Git:** `git push --force`, `git reset --hard`, `git rebase`, `git clean`, `git stash drop`.
+- **Git destructivo:** `git push --force`, `git reset --hard`, `git rebase`, `git clean`, `git stash drop`.
 - **Saltos de validación:** cualquier comando con `--no-verify`.
-- **Eliminación recursiva o masiva:** `rm -rf` sobre cualquier ruta, incluidos `/`, `*`, `.` y carpetas del proyecto.
-- **Alteraciones de base de datos en caliente:** comandos CLI directos contra bases de datos en producción o sin flag de migración.
-- **Instalación de paquetes sin justificación:** `npm install <libreria>` o `pip install <libreria>`, a menos que la spec activa lo autorice explícitamente.
+- **Eliminación recursiva o masiva:** `rm -rf` sobre cualquier ruta.
+- **Bases de datos en caliente:** comandos contra bases de datos reales o de producción. Las migraciones **solo se generan** (`prisma migrate dev --create-only`, `alembic revision`, `dotnet ef migrations add`, archivo Flyway nuevo…); nunca se aplican desde el agente.
+- **Instalación de paquetes sin autorización:** `npm install <x>`, `pip install <x>`, `mvn dependency:get`, `dotnet add package`, etc., salvo que la spec activa lo autorice.
+
+---
+
+## 3. Herramientas que Requieren Consentimiento
+
+Estas acciones solo se ejecutan si el desarrollador lo autoriza en la sesión:
+
+- Instalar skills (`agentes-desarrollo/install.sh`) o herramientas (`uv tool install graphifyy`, `graphify install`).
+- Construir o actualizar el grafo de graphify (`/graphify .`).
+- Instalar hooks de Git (`graphify hook install` u otros).
+- Llamadas de prueba a modelos externos que consumen cuota (`audit_gate.sh --probe`).
 
 Si un cambio requiere revertirse, aplica `rollback.md`.

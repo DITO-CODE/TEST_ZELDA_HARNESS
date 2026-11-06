@@ -1,47 +1,47 @@
 # Contratos de Datos e Invariantes de Negocio
 
-<!-- AJUSTAR: generado a partir del código actual (2026-11-06). Revisa y completa las convenciones. -->
+El proyecto no tiene backend ni API, así que no hay contratos OpenAPI en `.harness/contracts/`. Los contratos son los archivos de datos estáticos de `proyecto/data/` y las claves de `localStorage`. El gate 5.2 de `AGENTS.md` los verifica.
 
-## 1. Modelo de Pozo (`data/wells.json` y `window.TOTK_WELLS`)
+## 1. Reglas Comunes a Todas las Categorías
 
-Arreglo de objetos con este esquema exacto:
+1. **Dos archivos por categoría:** `data/<categoría>.json` (fuente legible) y `data/<categoría>.js` (`window.TOTK_<CATEGORÍA> = [...];`) con exactamente los mismos registros y en el mismo orden.
+2. **`id`:** string de 4 dígitos con sufijo opcional de una mayúscula (`^\d{4}[A-Z]?$`), único dentro de la categoría. Es la clave de persistencia: no se renumera.
+3. **`name`:** string, en inglés tal como aparece en la fuente. La UI lo inserta con `escapeHtml()`.
+4. **Coordenadas `x`, `y`, `z`:** números finitos en unidades del juego. `|x| ≤ 5000` y `|y| ≤ 6000` (`MAP_BOUNDS` de `app.js`). `z` es la altura y solo se muestra.
+5. **Sin campos de más:** el conjunto de claves de cada registro es exactamente el de su categoría.
+6. **Nomenclatura:** claves JSON en minúscula de una palabra; variables de `app.js` en `camelCase` y constantes en `UPPER_SNAKE_CASE`.
+
+---
+
+## 2. Esquemas por Categoría
+
+| Categoría | Archivos | Global | Claves exactas | Enumerados |
+| :--- | :--- | :--- | :--- | :--- |
+| Pozos | `data/wells.json`, `data/wells.js` | `window.TOTK_WELLS` | `id, name, x, y, z` | — |
+| Atuendos | `data/outfits.json`, `data/outfits.js` | `window.TOTK_OUTFITS` | `id, name, set, slot, layer, x, y, z` | `slot`: `head` \| `body` \| `legs`; `layer`: `surface` \| `sky` \| `depths`; `set`: string (puede ser `""`) |
+
+Ejemplo de atuendo:
 
 ```json
-{
-  "id": "0001",
-  "name": "Dronoc's Pass Well",
-  "x": 2105.445,
-  "y": -3831.584,
-  "z": 125.203
-}
+{ "id": "0001", "name": "Barbarian Armor", "set": "", "slot": "body", "layer": "surface", "x": 819.64, "y": 632.05, "z": 133.11 }
 ```
 
-| Campo | Tipo | Regla |
-| :--- | :--- | :--- |
-| `id` | string | 4 dígitos con ceros a la izquierda, único. La app ordena por `id`. |
-| `name` | string | Nombre del pozo; se escapa con `escapeHtml()` al renderizar. |
-| `x` | number | Coordenada usada como **lat** en Leaflet (`L.marker([x, y])`). En la UI se muestra como "Y". |
-| `y` | number | Coordenada usada como **lng** en Leaflet. En la UI se muestra como "X". |
-| `z` | number | Altura; solo se muestra en el popup. |
+---
 
-- Las coordenadas deben estar dentro de `MAP_BOUNDS = [[-5000, -6000], [5000, 6000]]`.
-- No agregar campos sin actualizar este contrato.
+## 3. Persistencia en `localStorage`
+
+| Clave | Contenido |
+| :--- | :--- |
+| `totk.wells.found.v1` | Array JSON de `id` de pozos encontrados. |
+| `totk.outfits.found.v1` | Array JSON de `id` de atuendos encontrados. |
+| `totk.wells.view.v1` | `{ lat, lng, zoom }` de la última vista del mapa. |
+
+- Al cargar se descartan los `id` que no existan en los datos actuales.
+- Cambiar el formato o el nombre de una clave exige subir la versión (`.v2`) y migrar en la misma spec los datos de la clave anterior, sin perder el progreso del usuario.
 
 ---
 
-## 2. Persistencia en `localStorage`
+## 4. Origen de los Datos
 
-| Clave | Contenido | Validación al leer |
-| :--- | :--- | :--- |
-| `totk.wells.found.v1` | Arreglo JSON de `id` encontrados | Se descartan ids que no existan en los datos |
-| `totk.wells.view.v1` | `{ "lat": number, "lng": number, "zoom": number }` | Números finitos, zoom en `[-4, 1]` y centro dentro de `MAP_BOUNDS` |
-
-- Si cambia el formato de un valor, crea una clave nueva con sufijo de versión (`.v2`) y migra desde la anterior; no rompas el progreso guardado de los usuarios.
-
----
-
-## 3. Nomenclatura
-
-- Variables y funciones JS: `camelCase`. Constantes: `UPPER_SNAKE_CASE`.
-- Clases CSS: BEM (`bloque__elemento--modificador`) y estados con `is-*`.
-- Atributos de acción en el DOM: `data-*` (`data-focus-well`, `data-toggle-well`, `data-center-well`).
+- Fuente: ZeldaMods (TotK Object Map). Antes de regenerar datos, verifica la conversión de coordenadas contra un registro conocido y deja la evidencia en la bitácora.
+- Nunca inventes registros ni coordenadas: si un dato no se puede verificar, déjalo fuera y repórtalo.

@@ -2,35 +2,45 @@
 
 ---
 
-## 1. Políticas de Ramas (Branching)
+## 1. Políticas de Ramas
 
-- **Prohibido operar en ramas protegidas:** El agente jamás debe ejecutar cambios directamente sobre `main`, `master`, `staging` o `develop`.
-- **Nomenclatura obligatoria de ramas:**
-  - `feat/<task-id>-<descripcion-corta>`
-  - `fix/<task-id>-<descripcion-corta>`
-  - `refactor/<task-id>-<descripcion-corta>`
-- **Verificación inicial:** Antes de modificar cualquier archivo, el agente debe ejecutar `git branch --show-current` para cerciorarse de que se encuentra en la rama de la tarea.
+- **Prohibido operar en ramas protegidas:** el agente jamás ejecuta cambios sobre `main`, `master`, `staging` o `develop`.
+- **Nomenclatura obligatoria:** la rama lleva la clave de Jira de la spec.
+  - `feat/<TASK-ID>-<descripcion-corta>`
+  - `fix/<TASK-ID>-<descripcion-corta>`
+  - `refactor/<TASK-ID>-<descripcion-corta>`
+- **Verificación inicial:** antes de modificar cualquier archivo, ejecuta `git branch --show-current` y confirma que es la rama asignada en `spec.md`.
 
 ---
 
 ## 2. Límites de Contención (Blast Radius)
 
-- **Límite de archivos:** Máximo **5 archivos** autorizados por spec en el arnés declarativo y por fase en el federado, incluidos los tests. Los archivos de lock, los generados y los de `.harness/memory/` no cuentan. Si la solución requiere más, el agente debe pausar y solicitar al desarrollador dividir la tarea en sub-specs.
-- **Límite de líneas:** Evitar diffs que superen las 300 líneas modificadas (excluyendo archivos de lock como `package-lock.json`).
+- **Límite de archivos:** máximo **5 archivos** por spec en el arnés declarativo y por fase en el federado, incluidos los tests. La lista autorizada es la tabla Blast Radius de `tasks.md`.
+- **No cuentan:** archivos de lock, archivos generados, `.harness/memory/`, `.harness/specs/`, `.harness/contracts/`, `.harness/runs/` y `graphify-out/`.
+- Si la solución requiere más archivos, el agente pausa y pide al desarrollador dividir la tarea en sub-specs.
+- **Límite de líneas:** evita diffs de más de 300 líneas modificadas (sin contar archivos de lock).
 
 ---
 
 ## 3. Convención de Commits
 
-Los commits generados por el agente deben ser atómicos y seguir estrictamente *Conventional Commits*:
+Los commits son atómicos y siguen *Conventional Commits*:
 
 - Formato: `<tipo>(<alcance>): <descripción concisa>`
-- Ejemplos válidos:
+- Ejemplos:
   - `feat(auth): add jwt validation middleware`
   - `fix(checkout): resolve price rounding in cart summary`
   - `test(users): add unit tests for user creation service`
-- Queda prohibido añadir explicaciones extensas generadas por IA dentro del título del commit.
-- **Memoria en commits separados:** Los cambios en `.harness/memory/` nunca se mezclan con código. Van en su propio commit `chore(memory): <TASK-ID> <resumen>`, que no requiere pasar los gates.
+- Prohibido añadir explicaciones extensas generadas por IA en el título.
+
+Commits separados, nunca mezclados con código:
+
+| Qué | Mensaje | ¿Requiere gates? |
+| :--- | :--- | :--- |
+| Artefactos de la spec y cambios de contrato, antes de aprobar | `docs(spec): <TASK-ID> <resumen>` | No |
+| Bitácora, lecciones y avance `[x]` de `tasks.md` | `chore(memory): <TASK-ID> <resumen>` | No |
+
+`.harness/runs/` y `graphify-out/` están en `.gitignore` y nunca se commitean.
 
 ---
 

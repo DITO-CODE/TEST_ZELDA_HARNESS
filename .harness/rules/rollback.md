@@ -15,13 +15,13 @@ Esta es la única fuente de verdad para revertir cambios. Aplica al arnés decla
 
 Ejecuta el rollback si ocurre cualquiera de estos casos:
 
-- La verificación sigue fallando después de **2 intentos consecutivos de depuración**.
-- Modificaste un archivo fuera de la lista autorizada por la spec.
+- El desarrollador eligió "Ejecutar rollback" después de agotar los intentos de un gate (`testing-gates.md` §3).
+- Modificaste un archivo fuera de la tabla Blast Radius de `tasks.md`.
 - Introdujiste un secreto o una dependencia no autorizada.
 - El cambio dejó el repositorio en un estado inconsistente.
 - Encontraste una incompatibilidad con otra fase que no se resuelve dentro de este repositorio.
 
-Después de 2 intentos fallidos no hagas un tercero.
+Un gate fallido no dispara el rollback por sí solo: primero se aplica la política de intentos de `testing-gates.md` §3 (2 automáticos, luego preguntar, máximo 3). Si nadie responde, detente sin tocar nada; no ejecutes el rollback por tu cuenta.
 
 ---
 
@@ -31,19 +31,19 @@ El protocolo de arranque garantiza que el repositorio estaba limpio al iniciar. 
 
 Si no puedes confirmar que el repositorio estaba limpio, detente y consulta al desarrollador sin ejecutar estos pasos.
 
-1. **Guarda el trabajo fallido, incluidos los archivos nuevos, sin tocar la memoria:**
+1. **Guarda el trabajo fallido, incluidos los archivos nuevos, sin tocar la memoria ni la spec:**
 
    ```bash
-   git stash push --include-untracked -m "rollback/<TASK-ID>/<YYYY-MM-DD>" -- . ':(exclude).harness/memory'
+   git stash push --include-untracked -m "rollback/<TASK-ID>/<YYYY-MM-DD>" -- . ':(exclude).harness/memory' ':(exclude).harness/specs'
    ```
 
-   La exclusión mantiene la bitácora en el árbol de trabajo para poder registrar el rollback.
-2. **Confirma el resultado:** `git status --short` solo puede mostrar archivos de `.harness/memory/`.
+   La exclusión mantiene la bitácora y el avance de `tasks.md` en el árbol de trabajo para poder registrar el rollback. `.harness/runs/` y `graphify-out/` están en `.gitignore`, así que el stash no los toca y el log de ejecución se conserva.
+2. **Confirma el resultado:** `git status --short` solo puede mostrar archivos de `.harness/memory/` o `.harness/specs/`.
 3. **Comprueba la base:** Ejecuta los gates del repositorio.
    - Si pasan, la base está estable.
    - Si fallan, repórtalo. No intentes corregirlo: el problema está en un commit o existía antes.
-4. **Registra el rollback:** Anexa una entrada `ROLLBACK` a la bitácora de la tarea con la causa raíz, el nombre del stash y el estado de la base. Commitea solo la memoria con `chore(memory): rollback <TASK-ID>`, para que la siguiente sesión arranque con el repositorio limpio.
-5. **Reporta en consola** con el formato de la sección 5 y **detente**.
+4. **Registra el rollback:** Anexa una entrada `ROLLBACK` a la bitácora de la tarea con la causa raíz, el nombre del stash y el estado de la base. Commitea solo la memoria (y el avance de `tasks.md`, si cambió) con `chore(memory): rollback <TASK-ID>`, para que la siguiente sesión arranque con el repositorio limpio.
+5. **Reporta en consola** con el formato de la sección 5 y **detente**. Si el rollback viene de un paro, el `[EJECUCIÓN DETENIDA]` ya indicó el origen.
 
 **Archivos ignorados:** El stash no guarda ni elimina los archivos que coinciden con `.gitignore`. Si la tarea creó alguno, indícalo en el reporte.
 
@@ -109,6 +109,7 @@ Si los commits ya llegaron a una rama compartida o a producción, el desarrollad
 - Ejecutar `git clean`, `git checkout -- .` o `git restore .`, porque destruyen cambios sin conservarlos.
 - Borrar archivos no rastreados para limpiar el repositorio.
 - Modificar o desactivar tests para evitar el rollback.
+- Hacer un cuarto intento de un gate.
 - Usar `--no-verify` para saltar validaciones.
 - Eliminar un stash de rollback.
 - Hacer commit de código que no pasó los gates.
@@ -127,6 +128,8 @@ Motivo: <causa raíz en una o dos líneas>
 Suposición incorrecta de la spec: <detalle o Ninguna>
 Stash: <nombre o Sin cambios>
 Bitácora: <ruta del archivo de .harness/memory/logs/>
+Log de ejecución: <ruta de .harness/runs/... o N/A>
+Intentos: <n de 3 o N/A>
 Commits afectados: <hashes o Ninguno>
 Efectos fuera de Git: <detalle o Ninguno>
 Estado de la base: <gates OK o gates FALLANDO>
